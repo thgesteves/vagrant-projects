@@ -1,0 +1,61 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "centos/7"
+
+  # Alternative to port forwarding 
+  # config.vm.network "private_network", ip: "192.168.33.10"
+
+  # VirtualBox specific
+  config.vm.provider "virtualbox" do |vb|
+     vb.memory = "2048"
+	 vb.cpus = 2
+	 # Avoid host cpu usage above 60% no matter how much cpu the vm use
+	 vb.customize ["modifyvm", :id, "--cpuexecutioncap", "60"]
+  end
+  
+  # Port forwarding
+  # MongoDB
+  config.vm.network "forwarded_port", guest: 27017, host: 27017, host_ip: "127.0.0.1"
+  # Redis
+  config.vm.network "forwarded_port", guest: 6379, host: 6379, host_ip: "127.0.0.1"
+  # RabbitMQ
+  config.vm.network "forwarded_port", guest: 5672, host: 5672, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 15672, host: 15672, host_ip: "127.0.0.1"
+  
+  # Provision
+  config.vm.provision "file", source: "mongodb-org-4.2.repo", destination: "/tmp/mongodb-org-4.2.repo"
+  config.vm.provision "file", source: "MongoAuthSetup.js", destination: "/tmp/MongoAuthSetup.js"
+  
+  config.vm.provision "shell", inline: <<-SHELL
+	yum update
+	yum -y install telnet
+	yum -y install net-tools
+	mv /tmp/mongodb-org-4.2.repo /etc/yum.repos.d/
+	yum install -y mongodb-org-4.2.13 mongodb-org-server-4.2.13 mongodb-org-shell-4.2.13 mongodb-org-mongos-4.2.13 mongodb-org-tools-4.2.13
+	sed -i 's/bindIp: 127.0.0.1/bindIp: 0.0.0.0/g' /etc/mongod.conf
+	systemctl enable --now mongod
+	mongo admin /tmp/MongoAuthSetup.js
+	rm /tmp/MongoAuthSetup.js
+	echo 'security:\n   authorization: enabled' >> /etc/mongod.conf
+	systemctl restart mongod
+	yum -y install epel-release
+	yum -y install http://rpms.remirepo.net/enterprise/remi-release-7.rpm
+	yum -y install wget
+	yum -y install redis-6.2.1 --enablerepo=remi
+	sed -i 's/^bind .*/bind 0.0.0.0/g' /etc/redis/redis.conf
+	systemctl enable --now redis
+	wget https://packages.erlang-solutions.com/erlang-solutions-2.0-1.noarch.rpm
+	yum -y install erlang-solutions-2.0-1.noarch.rpm
+	yum -y install erlang-23.2.3
+	rpm --import https://www.rabbitmq.com/rabbitmq-signing-key-public.asc
+	wget https://github.com/rabbitmq/rabbitmq-server/releases/download/v3.8.14/rabbitmq-server-3.8.14-1.el7.noarch.rpm
+	yum -y install rabbitmq-server-3.8.14-1.el7.noarch.rpm
+	systemctl enable --now rabbitmq-server
+	rabbitmq-plugins enable rabbitmq_management
+	rabbitmqctl add_user mqadmin mqadminpass
+	rabbitmqctl set_user_tags mqadmin administrator
+	rabbitmqctl set_permissions -p / mqadmin ".*" ".*" ".*"
+  SHELL
+end
