@@ -21,14 +21,15 @@ that setups the whole system)
 
 ## Known issue
 
-### Hyper-V on Windows hosts
+### (Windows hosts only) VirtualBox with Hyper-V enabled
 
-The projects in this repository are unlikely to work correctly on Windows hosts with Hyper-V enabled.
+VirtualBox version < 6 does not run correctly with Hyper-v enabled and in version 6 this feature is experimental 
+[https://docs.oracle.com/en/virtualization/virtualbox/6.0/admin/hyperv-support.html]
 
-Windows features that enable Hyper-V include Application Guard, Containers, Credential Guard, Device Guard, Hyper-V, 
-Virtual Machine Platform, Windows Hypervisor Platform, Windows Sandbox, and Windows Subsystem for Linux 
-(WSL2 only; WSL1 does _not_ use Hyper-V). If you encounter problems with the projects on a Windows host, please try 
-disabling these features.
+To check if Hyper-V is enabled, run the command `Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V` from an 
+Administrator PowerShell.
 
-To completely disable all Hyper-V features, it may be necessary to run the command `bcdedit /set hypervisorlaunchtype Off` 
-from an Administrator Command Prompt. After running this command, reboot the computer.
+To completely disable Hyper-V, run the command `Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V` 
+from an Administrator PowerShell. Reboot the computer after running this command.
+
+> NOTE: Windows Subsystem for Linux uses Hyper-V (WSL2 only; WSL1 does _not_ use Hyper-V)
